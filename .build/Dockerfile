@@ -431,7 +431,7 @@ RUN set -ex \
     torchvision \
     torchaudio \
 ' \
- && pip install --pre --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/nightly/rocm6.4\
+ && pip install --pre --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/rocm6.3 \
  && fix-permissions "${CONDA_DIR}" \
  && fix-permissions "/home/${NB_USER}"
 
