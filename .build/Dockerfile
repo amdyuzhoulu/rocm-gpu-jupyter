@@ -5,10 +5,10 @@
 # More information can be found in the README under configuration.
 
 
-# Use NVIDIA CUDA as base image and run the same installation as in the other packages.
+# Use ROCM BASE image as base image and run the same installation as in the other packages.
 # The version of cuda must match those of the packages installed in src/Dockerfile.gpulibs
-FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04
-LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at>"
+FROM rocm/dev-ubuntu-24.04:6.4-complete
+LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at> yuzhoulu@amd.com"
 
 # This is a concatenated Dockerfile, the maintainers of subsequent sections may vary.
 RUN chmod 1777 /tmp && chmod 1777 /var/tmp
@@ -17,6 +17,8 @@ RUN chmod 1777 /tmp && chmod 1777 /var/tmp
 RUN apt-get update && \
     apt-get -y install apt-utils
 
+RUN userdel -r ubuntu    
+USER root
 ############################################################################
 #################### Dependency: jupyter/docker-stacks-foundation ##########
 ############################################################################
@@ -398,7 +400,7 @@ WORKDIR "${HOME}"
 ########################## Dependency: gpulibs #############################
 ############################################################################
 
-LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at>"
+LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at> yuzhoulu@amd.com"
 
 # Install dependencies for e.g. PyTorch
 RUN mamba install --quiet --yes \
@@ -425,37 +427,15 @@ RUN pip install --upgrade pip && \
 #  && torchviz==0.0.2 --extra-index-url https://download.pytorch.org/whl/cu121
 RUN set -ex \
  && buildDeps=' \
-    torch==2.6.0 \
-    torchvision==0.21.0 \
-    torchaudio==2.6.0 \
+    torch \
+    torchvision \
+    torchaudio \
 ' \
- && pip install --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/cu126\
+ && pip install --pre --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/nightly/rocm6.4\
  && fix-permissions "${CONDA_DIR}" \
  && fix-permissions "/home/${NB_USER}"
 
-USER root
-ENV CUDA_PATH=/opt/conda/
 
-# Install nvtop to monitor the gpu tasks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends cmake libncurses5-dev libncursesw5-dev git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# reinstall nvcc with cuda-nvcc to install ptax
-USER $NB_UID
-# These need to be two separate pip install commands, otherwise it will throw an error
-# attempting to resolve the nvidia-cuda-nvcc package at the same time as nvidia-pyindex
-RUN pip install --no-cache-dir nvidia-pyindex && \
-    pip install --no-cache-dir nvidia-cuda-nvcc && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
-
-# Install cuda-nvcc with sepecific version, see here:
-# https://anaconda.org/nvidia/cuda-nvcc/labels
-RUN mamba install -c nvidia cuda-nvcc=12.6.85 -y && \
-    mamba clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
 
 USER root
 RUN ln -s $CONDA_DIR/bin/ptxas /usr/bin/ptxas
@@ -523,3 +503,25 @@ ARG JUPYTER_TOKEN
 ENV JUPYTER_TOKEN=$JUPYTER_TOKEN
 COPY jupyter_server_config_token_addendum.py /etc/jupyter/
 RUN cat /etc/jupyter/jupyter_server_config_token_addendum.py >> /etc/jupyter/jupyter_server_config.py
+
+############################################################################
+########################## amd packages ####################################
+############################################################################
+
+USER root
+
+RUN groupmod -g 992 render
+RUN usermod -aG video,render ${NB_USER}
+RUN echo "jovyan:jovyan" | chpasswd
+
+# Switch back to jovyan to avoid accidental container runs as root
+USER $NB_UID
+COPY ./introduction_to_hip_notebooks  /share/notebook
+
+# Change ownership of /share/notebook to jovyan
+USER root
+RUN chown -R $NB_UID:$NB_GID /share/notebook
+
+# Switch back to jovyan to avoid accidental container runs as root
+USER $NB_UID
+WORKDIR /share/notebook

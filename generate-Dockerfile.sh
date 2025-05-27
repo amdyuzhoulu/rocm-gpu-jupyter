@@ -187,6 +187,15 @@ echo "COPY jupyter_server_config_token_addendum.py /etc/jupyter/" >> $DOCKERFILE
 echo "RUN cat /etc/jupyter/jupyter_server_config_token_addendum.py >> /etc/jupyter/jupyter_server_config.py" >> $DOCKERFILE
 
 
+echo "
+############################################################################
+########################## amd packages ####################################
+############################################################################
+" >> $DOCKERFILE
+cat custom/amddiy.Dockerfile >> $DOCKERFILE
+
+
+
 # set password
 if [[ "$USE_PASSWORD" == 1 ]]; then
   echo "Set password to given input"

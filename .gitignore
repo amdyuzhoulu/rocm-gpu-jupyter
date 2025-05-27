@@ -123,3 +123,6 @@ src/jupyter_notebook_config.json
 extra/Getting_Started/tensorboard/runs
 *copy.sh
 test_generate-Dockerfile.sh
+/.build/Getting_Started
+/.build/rocm-examples
+/.build/introduction_to_hip_notebooks 

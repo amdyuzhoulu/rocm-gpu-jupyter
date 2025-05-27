@@ -1,4 +1,4 @@
-LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at>"
+LABEL authors="Christoph Schranz <christoph.schranz@salzburgresearch.at> yuzhoulu@amd.com"
 
 # Install dependencies for e.g. PyTorch
 RUN mamba install --quiet --yes \
@@ -25,37 +25,15 @@ RUN pip install --upgrade pip && \
 #  && torchviz==0.0.2 --extra-index-url https://download.pytorch.org/whl/cu121
 RUN set -ex \
  && buildDeps=' \
-    torch==2.6.0 \
-    torchvision==0.21.0 \
-    torchaudio==2.6.0 \
+    torch \
+    torchvision \
+    torchaudio \
 ' \
- && pip install --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/cu126\
+ && pip install --pre --no-cache-dir $buildDeps  --index-url https://download.pytorch.org/whl/nightly/rocm6.4\
  && fix-permissions "${CONDA_DIR}" \
  && fix-permissions "/home/${NB_USER}"
 
-USER root
-ENV CUDA_PATH=/opt/conda/
 
-# Install nvtop to monitor the gpu tasks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends cmake libncurses5-dev libncursesw5-dev git && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# reinstall nvcc with cuda-nvcc to install ptax
-USER $NB_UID
-# These need to be two separate pip install commands, otherwise it will throw an error
-# attempting to resolve the nvidia-cuda-nvcc package at the same time as nvidia-pyindex
-RUN pip install --no-cache-dir nvidia-pyindex && \
-    pip install --no-cache-dir nvidia-cuda-nvcc && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
-
-# Install cuda-nvcc with sepecific version, see here:
-# https://anaconda.org/nvidia/cuda-nvcc/labels
-RUN mamba install -c nvidia cuda-nvcc=12.6.85 -y && \
-    mamba clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
 
 USER root
 RUN ln -s $CONDA_DIR/bin/ptxas /usr/bin/ptxas

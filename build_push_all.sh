@@ -8,10 +8,6 @@ export TAGNAME=${TAGNAME:-HEAD}
 # manually set tag
 # export TAGNAME="v1.5_cuda-11.6_ubuntu-20.04"
 echo "Build and push images full, python-only & slim for branch '$TAGNAME'."
-if [[ "$TAGNAME" != "v"*"_cuda-"*"_ubuntu-"* ]]; then
-    echo "ERROR, build_push_all.sh only possible within branches of shape 'v'*'_cuda-'*'_ubuntu-'*."
-    exit 1
-fi
 
 ###################### build, run and push full image ##########################
 echo
